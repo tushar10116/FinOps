@@ -3,7 +3,7 @@ import { CloudCredentials } from "../pages/CloudConnectPage";
 import { getStoredToken, readErrorMessage } from "./auth";
 
 
-const baseURL = "https://finops-nxob.onrender.com/";
+const baseURL = "https://finops-nxob.onrender.com";
 
 export async function registerCloud(
   creds: CloudCredentials,

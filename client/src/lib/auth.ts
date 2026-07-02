@@ -54,7 +54,7 @@ async function postAuth<T>(path: string, body: unknown): Promise<T> {
   return authSessionSchema.parse(await response.json()) as T;
 }
 
-const baseURL ="https://finops-nxob.onrender.com/"
+const baseURL ="https://finops-nxob.onrender.com"
 
 export function registerUser(input: RegisterInput): Promise<AuthSession> {
   return postAuth<AuthSession>(`${baseURL}/api/auth/register`, input);
