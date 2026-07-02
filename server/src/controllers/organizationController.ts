@@ -21,8 +21,14 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 1. Get the path from your Render Environment Variable, or use a default string
 const gcpKeyPath = process.env.GCP_KEY_PATH || "/private/finops-501204-4ad6dd107756.json";
-const gcpKeyFile = path.resolve(__dirname, gcpKeyPath);
+
+// 2. Check if the path is absolute (starts with /). If it is absolute (like on Render),
+//    use it directly. If it's relative (like locally), resolve it with __dirname.
+const gcpKeyFile = path.isAbsolute(gcpKeyPath) 
+  ? gcpKeyPath 
+  : path.resolve(__dirname, gcpKeyPath);
 const bigquery = new BigQuery({keyFilename: gcpKeyFile});
 
 export const organizationController = {
