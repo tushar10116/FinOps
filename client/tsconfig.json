@@ -6,7 +6,8 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "types": ["vite/client", "react", "react-dom"],
-    "noEmit": true
+    "noEmit": true,
+     "ignoreDeprecations": "6.0"
   },
   "include": ["src"]
 }
