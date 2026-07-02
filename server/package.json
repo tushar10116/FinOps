@@ -16,6 +16,7 @@
     "@aws-sdk/client-sts": "^3.1077.0",
     "@azure/arm-compute": "^24.1.0",
     "@azure/arm-consumption": "^9.2.0",
+    "@azure/arm-costmanagement": "^1.0.0-beta.1",
     "@azure/identity": "^4.13.1",
     "@google-cloud/bigquery": "^8.3.1",
     "@google/genai": "^2.10.0",
