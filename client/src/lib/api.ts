@@ -35,8 +35,10 @@ export const dashboardPayloadSchema = z.object({
 
 export type DashboardPayload = z.infer<typeof dashboardPayloadSchema>;
 
+const baseURL="https://finops-nxob.onrender.com/"
+
 export async function getDashboard() {
-  const response = await fetch("/api/dashboard/get-dashboard", {
+  const response = await fetch(`${baseURL}/api/dashboard/get-dashboard`, {
     headers: {
       Authorization: `Bearer ${getStoredToken()}`
     }

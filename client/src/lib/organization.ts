@@ -2,11 +2,14 @@ import { IOrganization, IOrganizationCloudResponse, Organization } from "@shared
 import { CloudCredentials } from "../pages/CloudConnectPage";
 import { getStoredToken, readErrorMessage } from "./auth";
 
+
+const baseURL = "https://finops-nxob.onrender.com/";
+
 export async function registerCloud(
   creds: CloudCredentials,
 ): Promise<string> {
   try {
-    const response = await fetch(`/api/organization/register-cloud`, {
+    const response = await fetch(`${baseURL}/api/organization/register-cloud`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -33,7 +36,7 @@ export async function getOrganization()
 {
     try {
         
-        const response = await fetch("/api/organization/get-organization",
+        const response = await fetch(`${baseURL}/api/organization/get-organization`,
             {
                 method:"GET",
                 headers:{
@@ -51,7 +54,7 @@ export async function getOrganization()
 export async function updateConnectionStatus(statusInput:{platform:string,status:string}):Promise<string>{
   try {
    
-    const response = await fetch('/api/organization/update-connection-status',{
+    const response = await fetch(`${baseURL}/api/organization/update-connection-status`,{
       method:'PATCH',
       headers:{
         'Content-Type':'application/json',

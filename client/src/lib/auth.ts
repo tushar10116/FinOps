@@ -54,20 +54,22 @@ async function postAuth<T>(path: string, body: unknown): Promise<T> {
   return authSessionSchema.parse(await response.json()) as T;
 }
 
+const baseURL ="https://finops-nxob.onrender.com/"
+
 export function registerUser(input: RegisterInput): Promise<AuthSession> {
-  return postAuth<AuthSession>("/api/auth/register", input);
+  return postAuth<AuthSession>(`${baseURL}/api/auth/register`, input);
 }
 
 export function registerOrganization(input: RegisterInput & Organization ): Promise<RegisterOrganizationResponse> {
-  return postAuth<RegisterOrganizationResponse>("/api/auth/register-organization", input);
+  return postAuth<RegisterOrganizationResponse>(`${baseURL}/api/auth/register-organization`, input);
 }
 
 export function loginUser(input: AuthCredentials): Promise<AuthSession> {
-  return postAuth<AuthSession>("/api/auth/login", input);
+  return postAuth<AuthSession>(`${baseURL}/api/auth/login`, input);
 }
 
 export async function fetchCurrentUser(token: string): Promise<AuthUser> {
-  const response = await fetch("/api/auth/me", {
+  const response = await fetch(`${baseURL}/api/auth/me`, {
     headers: {
       Authorization: `Bearer ${token}`
     }
@@ -94,7 +96,7 @@ export async function readErrorMessage(response: Response): Promise<string> {
 export async function addMemberToOrganization(input: InviteUserInput): Promise<InviteUserResponse|string> {
 
   try{
-    const response = await fetch("/api/organization/invite-member", {
+    const response = await fetch(`${baseURL}/api/organization/invite-member`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -121,7 +123,7 @@ catch(error){
 
 export async function getInvitedMembers(): Promise<InviteUserResponse[]> {
 
-  const response = await fetch("/api/organization/invited-members", {
+  const response = await fetch(`${baseURL}/api/organization/invited-members`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${getStoredToken()}`
@@ -141,7 +143,7 @@ export async function getInvitedMembers(): Promise<InviteUserResponse[]> {
 export async function removeInvitedMember(email:string):Promise<string>{
 
   try {
-    const response = await fetch("/api/organization/remove-invited-member", {
+    const response = await fetch(`${baseURL}/api/organization/remove-invited-member`, {
       method:'DELETE',
       headers: {
         "Content-Type": "application/json",
@@ -164,7 +166,7 @@ export async function removeInvitedMember(email:string):Promise<string>{
 export async function generateInviteTokenForMember(email:string):Promise<OrganizationMember>{
 
   try {
-    const response = await fetch("/api/organization/generate-invite-token", {
+    const response = await fetch(`${baseURL}/api/organization/generate-invite-token`, {
       method:'POST',
       headers: {
         "Content-Type": "application/json",
