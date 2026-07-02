@@ -1,0 +1,10 @@
+node_modules
+client/dist
+server/dist
+shared/dist
+coverage
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
