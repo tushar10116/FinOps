@@ -18,10 +18,9 @@ export const SignupValidationSchema = z.object({
             .email("invalid email format")
             .trim()
             .toLowerCase(),
-    password: z.string()
-            .min(6, "Password must be at least 6 characters long"),
-    organization:z.string(),
-    token: z.string().trim()
+    password: z.string(),
+     
+    inviteToken: z.string().trim()
 })
 
 export type ISignupInput = z.infer<typeof SignupValidationSchema>;

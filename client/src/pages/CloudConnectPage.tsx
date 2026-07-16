@@ -250,7 +250,7 @@ export default function CloudConnectPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl sm:p-8">
+        <div className="max-w-[92%] md:max-w-[100%] rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl sm:p-8">
           <div className="mb-6 flex items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-cyan-300/80">
@@ -265,9 +265,9 @@ export default function CloudConnectPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className=" grid gap-4 sm:grid-cols-2">
             <Field>
-              <Label htmlFor="platform">Platform</Label>
+              <Label  htmlFor="platform">Platform</Label>
               <SelectField
                 id="platform"
                 name="platform"
@@ -431,7 +431,7 @@ export default function CloudConnectPage() {
           ) : null}
         </div>
 
-        <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6 shadow-glow sm:p-8">
+        <div className="max-w-[92%] md:max-w-[100%] rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6 shadow-glow sm:p-8">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-cyan-300/80">

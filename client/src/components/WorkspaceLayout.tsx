@@ -1,28 +1,32 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { CloudCog, LayoutDashboard, LogOut, Shield, UsersRound } from "lucide-react";
 import { clearStoredToken } from "../lib/auth";
+import { useUser } from "../hooks/useUser";
 
 const navigationItems = [
   {
     to: "/dashboard",
     label: "Dashboard",
-    icon: LayoutDashboard
+    icon: LayoutDashboard,
+    allowedRoles:["admin","user"]
   },
   {
     to: "/organization-users",
     label: "Organization users",
-    icon: UsersRound
+    icon: UsersRound,
+    allowedRoles:["admin"]
   },
   {
     to: "/cloud-platforms",
     label: "Cloud platforms",
-    icon: CloudCog
+    icon: CloudCog,
+    allowedRoles:["admin"]
   }
-] as const;
+] ;
 
 export default function WorkspaceLayout() {
   const navigate = useNavigate();
-
+ const { data:loadedUser, isLoading, isError } = useUser(); 
   const handleSignOut = () => {
     clearStoredToken();
     navigate("/login", { replace: true });
@@ -43,8 +47,8 @@ export default function WorkspaceLayout() {
               </div>
             </div>
 
-            <nav className="mt-5 space-y-2">
-              {navigationItems.map((item) => (
+            {!isLoading && loadedUser && <nav className="mt-5 space-y-2">
+              {navigationItems.filter((item) => item.allowedRoles.includes(loadedUser.role)).map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -61,10 +65,10 @@ export default function WorkspaceLayout() {
                   {item.label}
                 </NavLink>
               ))}
-            </nav>
+            </nav>}
           </div>
 
-          <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4">
+         {loadedUser && loadedUser.role === "admin" && <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4">
             <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Workspace note</p>
             <p className="mt-2 text-sm leading-6 text-slate-300">
               Use the menu to add organization members, register cloud platforms, and route into the dashboard.
@@ -77,7 +81,18 @@ export default function WorkspaceLayout() {
               <LogOut className="h-4 w-4" />
               Sign out
             </button>
-          </div>
+          </div>}
+           {loadedUser && loadedUser.role === "user" && <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4">
+            
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 transition hover:bg-white/10"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </div>}
         </aside>
 
         <section className="min-w-0">

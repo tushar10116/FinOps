@@ -12,14 +12,14 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [organization, setOrganization] = useState("");
   const [domain, setDomain] = useState("");
+  const [inviteToken, setToken] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  
 
   const mutation = useMutation({
     mutationFn: registerUser,
-    onSuccess: (session) => {
-      saveStoredToken(session.token);
-      navigate("/dashboard", { replace: true });
-    }
+   
+   
   });
 
   if (token) {
@@ -28,7 +28,7 @@ export default function RegisterPage() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    mutation.mutate({ name, email, password});
+    mutation.mutate({ name, email, password,inviteToken });
   }
 
   return (
@@ -47,12 +47,13 @@ export default function RegisterPage() {
               <TextField label="Email" type="email" value={email} onChange={setEmail} placeholder="you@company.com" />
               <TextField label="Password" type="password" value={password} onChange={setPassword} placeholder="At least 8 characters" />
             <TextField label="Confirm Password" type="password" value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter your password" />
-              {mutation.isError ? (
+             
+              <TextField  label="Token"  type="password" value={inviteToken} onChange={setToken} placeholder="invitation token" />
+               {mutation.isError ? (
                 <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
                   {mutation.error instanceof Error ? mutation.error.message : "Registration failed"}
                 </p>
               ) : null}
-
               <button
                 type="submit"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"

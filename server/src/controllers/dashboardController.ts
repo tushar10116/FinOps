@@ -91,6 +91,8 @@ export const dashboardController = {
         }
       }
 
+      
+      
       const recommendations = await analyseCostUsingOpenAi(results);
       return res.status(200).json(recommendations);
     } catch (error: any) {

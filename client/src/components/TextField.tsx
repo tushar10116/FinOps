@@ -3,13 +3,15 @@ export function TextField({
   value,
   onChange,
   type = "text",
-  placeholder
+  placeholder,
+  disabled
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
   placeholder: string;
+  disabled?: boolean
 }) {
   return (
     <label className="block">
@@ -19,6 +21,7 @@ export function TextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        disabled={disabled||false}
         className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20"
       />
     </label>

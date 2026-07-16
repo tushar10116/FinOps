@@ -1,11 +1,12 @@
 import { z } from "zod";
-import type { AuthSession, AuthUser, RegisterInput, AuthCredentials, Organization, RegisterOrganizationResponse, InviteUserInput, InviteUserResponse } from "@shared/types";
+import type { AuthSession, AuthUser, RegisterInput, AuthCredentials, Organization, RegisterOrganizationResponse, InviteUserInput, InviteUserResponse, IInviteUserInput } from "@shared/types";
 import { OrganizationMember } from "../pages/OrganizationUsersPage";
 
 const authUserSchema = z.object({
   id: z.string(),
   name: z.string(),
-  email: z.string()
+  email: z.string(),
+  role:z.string()
 });
 
 const authSessionSchema = z.object({
@@ -54,14 +55,41 @@ async function postAuth<T>(path: string, body: unknown): Promise<T> {
   return authSessionSchema.parse(await response.json()) as T;
 }
 
-const baseURL ="https://finops-nxob.onrender.com"
+const baseURL=import.meta.env.VITE_BASE_URL
 
-export function registerUser(input: RegisterInput): Promise<AuthSession> {
-  return postAuth<AuthSession>(`${baseURL}/api/auth/register`, input);
+export async function registerUser(input: IInviteUserInput): Promise<any> {
+  const response= await fetch(`${baseURL}/api/auth/register`,{ method:"POST", body:JSON.stringify(input),
+    headers:{
+      "Content-Type": "application/json"  
+    }
+  })
+
+   if (!response.ok) {
+    const message = await readErrorMessage(response);
+    throw new Error(message);
+  }
+
+  return await response.json()
 }
 
-export function registerOrganization(input: RegisterInput & Organization ): Promise<RegisterOrganizationResponse> {
-  return postAuth<RegisterOrganizationResponse>(`${baseURL}/api/auth/register-organization`, input);
+export async function registerOrganization(input: RegisterInput & Organization ): Promise<RegisterOrganizationResponse> {
+  const response = await fetch(`${baseURL}/api/auth/register-organization`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(input)
+  })
+
+  if (!response.ok) {
+    const message = await readErrorMessage(response);
+    throw new Error(message);
+  }
+
+  return await response.json()
+
+  
+ 
 }
 
 export function loginUser(input: AuthCredentials): Promise<AuthSession> {
@@ -82,6 +110,8 @@ export async function fetchCurrentUser(token: string): Promise<AuthUser> {
 
   return authUserSchema.parse(await response.json());
 }
+
+
 
 export async function readErrorMessage(response: Response): Promise<string> {
   try {
@@ -140,6 +170,79 @@ export async function getInvitedMembers(): Promise<InviteUserResponse[]> {
 
 }
 
+export async function forgetPassword(passwordResetPayload:{email:string,token:string,password:string}): Promise<string> {
+
+  try {
+    const response = await fetch(`${baseURL}/api/auth/reset-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(passwordResetPayload)
+    });
+
+    if (!response.ok) {
+      const message = await readErrorMessage(response);
+      throw new Error(message);
+    }
+
+    return await response.json();
+  } catch (error) {
+    return new Promise((resolve, reject) => {
+      if (error instanceof Error) {
+        reject(error);
+      } else {
+        reject(new Error("Internal server error"));
+      }
+    })
+  }
+}
+
+export async function getResetToken(email:string): Promise<string> {
+
+  try {
+    const response = await fetch(`${baseURL}/api/auth/get-reset-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({email})
+    });
+
+    if (!response.ok) {
+      const message = await readErrorMessage(response);
+      throw new Error(message);
+    }
+
+    return await response.json();
+  } catch (error) {
+    return new Promise((resolve, reject) => {
+      if (error instanceof Error) {
+        reject(error);
+      } else {
+        reject(new Error("Internal server error"));
+      }
+    })
+  }
+}
+
+export async function getRegisteredUsers(): Promise<InviteUserResponse[]> {
+
+  const response = await fetch(`${baseURL}/api/organization/get-organization-users`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${getStoredToken()}`
+    }
+  });
+   if(!response.ok){
+    const message = await readErrorMessage(response);
+    throw new Error(message);
+  }
+
+  return invitedUser.array().parse(await response.json()) as InviteUserResponse[];
+
+}
+
 export async function removeInvitedMember(email:string):Promise<string>{
 
   try {
@@ -161,6 +264,29 @@ export async function removeInvitedMember(email:string):Promise<string>{
       const message = "Internal server error";
         throw new Error(message);
   }
+}
+
+export async function deleteRegisteredUser(email:string):Promise<string>{
+
+  try {
+    const response = await fetch(`${baseURL}/api/organization/remove-registered-member`, {
+      method:'DELETE',
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getStoredToken()}`
+      },
+      body: JSON.stringify({email})
+      })
+
+      if(!response.ok){
+        const message = await readErrorMessage(response);
+        throw new Error(message);
+      }
+      return "Member removed successfully";
+  } catch (error) {
+      const message = "Internal server error";
+        throw new Error(message);
+      }
 }
 
 export async function generateInviteTokenForMember(email:string):Promise<OrganizationMember>{

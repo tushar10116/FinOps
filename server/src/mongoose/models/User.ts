@@ -8,7 +8,7 @@ export interface IUser {
     email: string;
     password: string;
     organizationId: mongoose.Types.ObjectId;
-    role: 'admin' | 'user';
+    role: 'admin' | 'viewer';
 }
 
 // 2. Define the instance methods interface
@@ -40,8 +40,8 @@ const userSchema = new Schema<UserDocument>(
         },
         role: {
             type: String,
-            enum: ["admin", "user"],
-            default: "user"
+            enum: ["admin", "viewer"],
+            default: "viewer"
         },
         organizationId: {
             type: Schema.Types.ObjectId,
@@ -65,7 +65,8 @@ userSchema.methods.generateAuthToken = async function (this: UserDocument): Prom
             id: this._id, 
             email: this.email, 
             name: this.name, 
-            organizationId: this.organizationId 
+            organizationId: this.organizationId,
+            role: this.role
         },
         process.env.JWT_SECRET!, 
         { expiresIn: '1h' }

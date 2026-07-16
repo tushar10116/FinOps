@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { ChangeEventHandler, MouseEvent, ReactNode } from "react";
-import { Clipboard, Eye, EyeClosed, MailPlus, Plus, Trash2, UserRoundPlus } from "lucide-react";
+import { Clipboard, Eye, EyeClosed, MailPlus, Plus, Trash, Trash2, UserRoundPlus } from "lucide-react";
 import Field from "../components/Field";
 import InputField from "../components/InputField";
 import Label from "../components/Label";
@@ -8,8 +8,10 @@ import SelectField from "../components/SelectField";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   addMemberToOrganization,
+  deleteRegisteredUser,
   generateInviteTokenForMember,
   getInvitedMembers,
+  getRegisteredUsers,
   removeInvitedMember,
 } from "../lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
@@ -45,6 +47,10 @@ export default function OrganizationUsersPage() {
     queryFn: () => getInvitedMembers(),
   });
 
+  const {data:registeredUsers, isLoading: registeredUsersLoading} = useQuery({
+    queryKey: ["registeredUsers"],
+    queryFn: () => getRegisteredUsers(),
+  })
 
 
   const addMutation = useMutation({
@@ -93,12 +99,20 @@ export default function OrganizationUsersPage() {
     },
   });
 
-  const generateTokenMutation = useMutation({
-    mutationFn:generateInviteTokenForMember,
+  const removeRegisteredUser = useMutation({
+    mutationFn: deleteRegisteredUser,
     onSuccess: (data) => {
-      setTokens((prev: OrganizationMember[]) => [...prev, {...data,tokenShown:true}]);
+      queryClient.invalidateQueries({ queryKey: ["registeredUsers"] });
+      setMessageTone("success");
+      setMessage("Member removed successfully");
+      window.setTimeout(() => {
+        setMessage("");
+        setMessageTone("");
+      }, 3000);
     }
   })
+
+ 
   
 
   const handleChange: ChangeEventHandler<
@@ -133,6 +147,17 @@ export default function OrganizationUsersPage() {
     }, 2500);
   };
 
+  const handleRemoveRegisteredUser = (email: string) => {
+    // Logic to remove a member from the organization
+    removeRegisteredUser.mutate(email);
+    setMessage("Member removed successfully");
+    setMessageTone("success");
+    window.setTimeout(() => {
+      setMessage("");
+      setMessageTone("");
+    }, 2500);
+  };
+
   function selectAndCopy(e: MouseEvent<HTMLButtonElement>) {
    
     const copybtn= e.currentTarget
@@ -147,14 +172,7 @@ export default function OrganizationUsersPage() {
     
   }
 
-  function generateInviteToken(email: string): void {
-    if(tokens.filter((t) => t.email === email && t.tokenShown).length>0) 
-    {
-      setTokens(prev=> prev.filter((t) => t.email !== email));
-      return;
-    }
-    generateTokenMutation.mutate(email);
-  }
+  
 
   return (
     <div className="space-y-6">
@@ -206,9 +224,7 @@ export default function OrganizationUsersPage() {
                 onChange={handleChange}
               >
                 <option value="admin">Admin</option>
-                <option value="billing_analyst">Billing Analyst</option>
                 <option value="viewer">Viewer</option>
-                <option value="finance_lead">Finance Lead</option>
               </SelectField>
             </Field>
           </div>
@@ -271,47 +287,63 @@ export default function OrganizationUsersPage() {
                       {member.role}
                     </span>
                   </div>
+                  <div className="mt-4 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={()=>handleRemoveMember(member.email) }
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-rose-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-rose-300"
+                    >
+                      Remove
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </div>
+                 
+                </article>
+              ))}
+          </div>
+        </div>
+        <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6 shadow-glow sm:p-8">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-cyan-300/80">
+                Registered members
+              </p>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.25em] text-slate-300">
+              {!!registeredUsers && registeredUsers.length} users
+            </span>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {!!registeredUsers &&
+              registeredUsers.map((member) => (
+                <article
+                  key={member.email}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h4 className="text-lg font-semibold text-white">
+                        {member.name}
+                      </h4>
+                      <p className="mt-1 text-sm text-slate-400">
+                        {member.email}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.25em] text-emerald-200">
+                      {member.role}
+                    </span>
+                  </div>
 
                   <div className="flex items-center token-area justify-between">
-                    <div className="flex flex-col items-center w-full">
-                      <textarea
-                        value={tokens.find((t) => t.email === member.email && t.tokenShown)?.token || ""}
-                        readOnly
-                       
-                        name="token"
-                        className="resize-none w-full mt-4 mr-4 border rounded-md p-2 border-emerald-400/20 bg-transparent focus:outline-none focus:ring-0"
-                      />
-                      {<button
-                        id="copyBtn"
-                        className={`${tokens.find((t) => t.email === member.email && t.tokenShown)?.token ? "" : "invisible"} 
-                        mt-2 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 transition hover:bg-white/10 cursor-pointer focus:outline-none`}
-                        onClick={(e:MouseEvent<HTMLButtonElement>) => {
-                          selectAndCopy(e);
-                        }}
-                      >
-                        <Clipboard className="h-4 w-4" /> Copy token
-                      </button>}
-                      <div className="invisible text-sm text-emerald-400/95">
-                        Copied
-                      </div>
-                    </div>
+                   
 
                     <div className="flex flex-col items-center">
+                      
                       <div className="mt-4 flex justify-end">
                         <button
                           type="button"
-                          onClick={() => generateInviteToken(member.email)}
-                          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 transition hover:bg-white/10"
-                        >
-                          Token
-                          {tokens.find((t) => t.email === member.email && t.tokenShown)?.token ? <Eye className="h-4 w-4" /> : <EyeClosed className="h-4 w-4" />}
-                         
-                        </button>
-                      </div>
-                      <div className="mt-4 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMember(member.email)}
+                          onClick={() => handleRemoveRegisteredUser(member.email)}
                           className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 transition hover:bg-white/10"
                         >
                           Remove

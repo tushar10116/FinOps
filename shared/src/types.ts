@@ -37,6 +37,7 @@ export interface AuthUser {
   name: string;
   email: string;
   organizationId?: string;
+  role:string;
 }
 
 export interface AuthCredentials {
@@ -60,6 +61,14 @@ export interface RegisterOrganizationResponse {
 
 export interface RegisterInput extends AuthCredentials {
   name: string;
+ 
+}
+
+export interface IInviteUserInput {
+  email: string;
+  name: string;
+  password: string;
+  inviteToken: string;
 }
 
 export interface InviteUserInput {

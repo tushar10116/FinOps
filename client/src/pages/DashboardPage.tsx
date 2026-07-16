@@ -8,6 +8,7 @@ import { PlatformCard } from "../components/PlatformCard";
 import { StatCard } from "../components/StatCard";
 import { useState } from "react";
 import {useQueryClient} from "@tanstack/react-query";
+import { useUser } from "../hooks/useUser";
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -28,6 +29,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   const queryClient = useQueryClient();
+  const {data:loadedUser, isLoading, isError } = useUser();
 
   const {data:dashboardData,isFetching} = useQuery({
     queryKey: ["dashboard"],
@@ -86,14 +88,14 @@ const platformWiseData = dashboard.reduce<GroupedData>((acc, item) => {
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(8,15,28,0.94),rgba(14,23,41,0.92))] p-6 shadow-glow">
         <div className="absolute inset-0 bg-radial-grid bg-[size:20px_20px] opacity-30" />
-        <div className="relative flex flex-col gap-6 md:flex-row items-center justify-center md:justify-between">
+        <div className="relative flex flex-col gap-6 sm:flex-row items-center justify-center md:justify-between">
          
            <div className="flex gap-3 flex-col sm:gap-5 sm:flex-row">
             <StatCard label="Total spend" value={dashboard  ? formatCurrency(totalSpend) : "--"} />
             <StatCard label="Opportunity" value={dashboard ? formatCurrency(totalSavingOpportunity) : "--"} />
             
           </div>
-          <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300 sm:min-w-[280px]">
+          {loadedUser && loadedUser.role === "admin" && <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300 sm:min-w-[280px]">
             <button
               type="button"
               onClick={() => navigate("/organization-users")}
@@ -116,7 +118,7 @@ const platformWiseData = dashboard.reduce<GroupedData>((acc, item) => {
               </span>
               <PlusCircle className="h-4 w-4 text-cyan-300" />
             </button>
-          </div>
+          </div>}
         </div>
       </section>
 

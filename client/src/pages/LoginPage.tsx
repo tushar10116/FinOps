@@ -87,6 +87,9 @@ export default function LoginPage() {
             <p className="mt-6 text-sm text-slate-400">
               Need an account? <Link className="text-cyan-300 hover:text-cyan-200" to="/register">Create one</Link>
             </p>
+            <p className="mt-6 text-sm text-slate-400">
+              Forgot your password? <Link className="text-cyan-300 hover:text-cyan-200" to="/forgot-password" >Reset it</Link>
+            </p>
           </div>
         </section>
       </div>

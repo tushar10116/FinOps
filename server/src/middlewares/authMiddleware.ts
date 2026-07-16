@@ -7,7 +7,7 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
 
         return res.status(401).json({ message: "Unauthorized" });
     }
-    req.user = jwt.decode(token) as { id: string, email: string, name: string ,organizationId:string};
+    req.user = jwt.decode(token) as { id: string,role:string, email: string, name: string ,organizationId:string};
    return next();
 };
 

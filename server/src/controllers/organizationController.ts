@@ -13,23 +13,25 @@ import { ClientSecretCredential } from "@azure/identity";
 import { decryptSecret, encryptSecret } from "../validations/bcrypt-helper.js"; // Linked helper paths
 import "../validations/string-helper.js";
 import { CloudConnectionRequestInput, IOrganization } from "@shared/types.js";
-import {GetCallerIdentityCommand, STSClient} from "@aws-sdk/client-sts";
+import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import { BigQuery } from "@google-cloud/bigquery";
 import path from "path";
 import { fileURLToPath } from "url";
+import nodemailer from "nodemailer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 1. Get the path from your Render Environment Variable, or use a default string
-const gcpKeyPath = process.env.GCP_KEY_PATH || "/private/finops-501204-4ad6dd107756.json";
+const gcpKeyPath =
+  process.env.GCP_KEY_PATH || "/private/finops-501204-4ad6dd107756.json";
 
 // 2. Check if the path is absolute (starts with /). If it is absolute (like on Render),
 //    use it directly. If it's relative (like locally), resolve it with __dirname.
-const gcpKeyFile = path.isAbsolute(gcpKeyPath) 
-  ? gcpKeyPath 
+const gcpKeyFile = path.isAbsolute(gcpKeyPath)
+  ? gcpKeyPath
   : path.resolve(__dirname, gcpKeyPath);
-const bigquery = new BigQuery({keyFilename: gcpKeyFile});
+const bigquery = new BigQuery({ keyFilename: gcpKeyFile });
 
 export const organizationController = {
   registerOrganization: async (
@@ -38,14 +40,14 @@ export const organizationController = {
   ) => {
     try {
       const { organizationName, domain, name, email, password } = req.body;
-      
+
       const existingOrganization = await Organization.findOne({ domain });
       if (existingOrganization) {
         return res
           .status(400)
           .json({ message: "Organization with this domain already exists" });
       }
-      
+
       const newOrganization = new Organization({
         organizationName,
         domain,
@@ -58,7 +60,7 @@ export const organizationController = {
         name,
         email,
         password: hashedPassword,
-        organizationId: newOrganization._id, 
+        organizationId: newOrganization._id,
         role: "admin",
       });
       await newUser.save();
@@ -67,7 +69,9 @@ export const organizationController = {
         .status(201)
         .json({ message: "Organization registered successfully" });
     } catch (error: any) {
-      return res.status(500).json({ message: error?.message || "Internal server error" });
+      return res
+        .status(500)
+        .json({ message: error?.message || "Internal server error" });
     }
   },
 
@@ -76,7 +80,9 @@ export const organizationController = {
       const organizationId = req.user?.organizationId;
 
       if (!organizationId) {
-        return res.status(400).json({ message: "Organization context not found in request" });
+        return res
+          .status(400)
+          .json({ message: "Organization context not found in request" });
       }
       const invitedMembers = await InviteUser.find({ organizationId }).select(
         "name email role",
@@ -93,8 +99,9 @@ export const organizationController = {
       const organizationId = req.user?.organizationId;
 
       if (!organizationId) {
-        return res.status(400).json({ 
-          message: "User validation failed: organizationId is missing from your session middleware." 
+        return res.status(400).json({
+          message:
+            "User validation failed: organizationId is missing from your session.",
         });
       }
 
@@ -102,22 +109,40 @@ export const organizationController = {
         return res.status(400).json({ message: "You cannot invite yourself" });
       }
 
-      const token = jwt.sign({ email, role, name }, process.env.JWT_SECRET!, {
-        expiresIn: "1h",
-      });
+      const isAlreadyRegistered = await User.findOne({ email });
 
+      if (isAlreadyRegistered)
+        return res.status(400).json({ message: "User is already registered." });
+      const token = Math.random().toString(36).slice(2);
       const invitedUserToken = new InviteUser({
         name,
         email,
         role,
-        token: token, 
+        token: token,
         organizationId: organizationId,
       });
 
       await invitedUserToken.save();
-      return res.status(200).send({ name, email, role, token });
+
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL,
+          pass: process.env.PASSWORD,
+        },
+      });
+      const mailOptions = {
+        from: process.env.EMAIL,
+        to: email,
+        subject: "FinOps Invite",
+        text: `Your invite token is ${token}`,
+      };
+      await transporter.sendMail(mailOptions);
+      return res.status(200).send({ name, email, role });
     } catch (error: any) {
-      return res.status(500).json({ message: error?.message || "Internal server error" });
+      return res
+        .status(500)
+        .json({ message: error?.message || "Internal server error" });
     }
   },
 
@@ -131,25 +156,7 @@ export const organizationController = {
     }
   },
 
-  getInvitedToken: async (req: Request, res: Response) => {
-    try {
-      const { email } = req.body;
-      const invitedUser = await InviteUser.findOne({ email });
-      if (invitedUser) {
-        return res.status(200).json({
-          name: invitedUser?.name,
-          email: invitedUser?.email,
-          role: invitedUser?.role,
-          token: invitedUser?.token,
-        });
-      }
-      return res
-        .status(400)
-        .json({ message: "Member not found. please invite member first" });
-    } catch (error) {
-      return res.status(500).json({ message: "Internal server error" });
-    }
-  },
+ 
 
   registerCloud: async (
     req: Request<{}, {}, CloudConnectionRequestInput>,
@@ -161,42 +168,85 @@ export const organizationController = {
       if (connectionRequestBody.platform.isNullOrEmptyString()) {
         return res.status(400).json({ message: "please select platform" });
       }
-  
+
       const organizationId = req.user?.organizationId;
       if (!organizationId) {
-        return res.status(400).json({ message: "Organization context not found in request" });
+        return res
+          .status(400)
+          .json({ message: "Organization context not found in request" });
       }
 
-      const updatedOrganization = await testAndSaveCloudCredentials(connectionRequestBody, organizationId);
-      
+      const updatedOrganization = await testAndSaveCloudCredentials(
+        connectionRequestBody,
+        organizationId,
+      );
+
       if (!updatedOrganization) {
         return res.status(500).json({ message: "unable to register cloud." });
       }
-      return res.status(200).json({ message: "cloud registered successfully", organization: updatedOrganization });
+      return res
+        .status(200)
+        .json({
+          message: "cloud registered successfully",
+          organization: updatedOrganization,
+        });
     } catch (error: any) {
-      return res.status(500).json({ message: error?.message || "Internal server error" });
+      return res
+        .status(500)
+        .json({ message: error?.message || "Internal server error" });
     }
   },
 
-  
+  getUsers: async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.user?.organizationId;
+      if (!organizationId) {
+        return res
+          .status(400)
+          .json({ message: "Organization context not found in request" });
+      }
+      const users = await User.find({ organizationId })
+        .select("name email role")
+        .where("_id")
+        .ne(req.user?.id || "");
+      return res.status(200).json(users);
+    } catch (error) {
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  },
+  deleteUser: async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+      await User.findByIdAndDelete(user._id);
+      return res.status(200).json({ message: "User deleted successfully" });
+    } catch (error) {
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  },
 
   getOrganizationById: async (req: Request, res: Response) => {
     try {
       const organizationId = req.user?.organizationId;
       if (!organizationId) {
-        return res.status(400).json({ message: "Organization context not found in request" });
+        return res
+          .status(400)
+          .json({ message: "Organization context not found in request" });
       }
 
       const organization = await Organization.findById(organizationId).lean();
-      
+
       if (!organization) {
         return res.status(404).json({ message: "Organization not found" });
       }
-        
+
       const organizationResponse = deleteInvalidCloudFromResponse(organization);
 
       const response = refractureOrganizationResponse(organizationResponse);
-                
+
       return res.status(200).json({ organization: organizationResponse });
     } catch (error) {
       return res.status(500).json({ message: "Internal server error" });
@@ -207,28 +257,40 @@ export const organizationController = {
     try {
       const { platform, status } = req.body;
       const organizationId = req.user?.organizationId;
-      
+
       if (!organizationId) {
-        return res.status(401).json({ message: "please re-authenticate yourself." });
+        return res
+          .status(401)
+          .json({ message: "please re-authenticate yourself." });
       }
 
       const organization = await Organization.findById(organizationId).lean();
 
       if (!organization) {
-        return res.status(400).json({ message: "you are not part of any organization" });
+        return res
+          .status(400)
+          .json({ message: "you are not part of any organization" });
       }
 
-      const response = await connectCloudCredentials(platform, organization as unknown as IOrganization, status);
+      const response = await connectCloudCredentials(
+        platform,
+        organization as unknown as IOrganization,
+        status,
+      );
 
       if (!response) {
-         return res.status(400).json({ message: "unable to connect. please check credentials." });
+        return res
+          .status(400)
+          .json({ message: "unable to connect. please check credentials." });
       }
-      
+
       return res.status(202).json({ message: "Connected Successfully" });
     } catch (error: any) {
-      return res.status(500).json({ message: error?.message || "Internal server error" });
+      return res
+        .status(500)
+        .json({ message: error?.message || "Internal server error" });
     }
-  }
+  },
 };
 
 //-------------------------------------- Organization helper functions --------------------------------------
@@ -250,35 +312,43 @@ function validateAzureRequest(
 
 function deleteInvalidCloudFromResponse(org: any) {
   if (!org) return org;
-  
+
   const organization = JSON.parse(JSON.stringify(org));
   const connections = organization.cloudConnections;
 
   if (!connections) return organization;
 
-  if (connections.azure && (!connections.azure.clientId || !connections.azure.tenantId)) {
+  if (
+    connections.azure &&
+    (!connections.azure.clientId || !connections.azure.tenantId)
+  ) {
     delete connections.azure;
   }
-  
-  if (connections.aws 
-    &&  !connections.aws.awsAccessKey 
-    && !connections.aws.awsSecretKeyEncrypted 
-    && !connections.aws.targetRegion) {
+
+  if (
+    connections.aws &&
+    !connections.aws.awsAccessKey &&
+    !connections.aws.awsSecretKeyEncrypted &&
+    !connections.aws.targetRegion
+  ) {
     delete connections.aws;
   }
 
-  if (connections.gcp && (
-    !connections.gcp.clientProjectId ||
-    !connections.gcp.clientDatasetId
-  )) {
+  if (
+    connections.gcp &&
+    (!connections.gcp.clientProjectId || !connections.gcp.clientDatasetId)
+  ) {
     delete connections.gcp;
   }
 
   return organization;
 }
 
-async function testAndSaveCloudCredentials(connectionRequestBody: CloudConnectionRequestInput, organizationId: string) {
-  try { 
+async function testAndSaveCloudCredentials(
+  connectionRequestBody: CloudConnectionRequestInput,
+  organizationId: string,
+) {
+  try {
     switch (connectionRequestBody.platform) {
       case ECloudPlatforms.AZURE: {
         if (!validateAzureRequest(connectionRequestBody)) {
@@ -288,44 +358,50 @@ async function testAndSaveCloudCredentials(connectionRequestBody: CloudConnectio
         const client_credentials = new ClientSecretCredential(
           connectionRequestBody.tenantId!,
           connectionRequestBody.clientId!,
-          connectionRequestBody.clientSecret!, 
+          connectionRequestBody.clientSecret!,
         );
 
-        const token = await client_credentials.getToken("https://management.azure.com/.default");
+        const token = await client_credentials.getToken(
+          "https://management.azure.com/.default",
+        );
         if (!token || !token.token || token.token.isNullOrEmptyString()) {
           throw new Error("Azure authentication returned an empty token.");
         }
-         
-        const encryptedSecretStr = encryptSecret(connectionRequestBody.clientSecret!);
+
+        const encryptedSecretStr = encryptSecret(
+          connectionRequestBody.clientSecret!,
+        );
 
         const azureConnectionRequest = {
           tenantId: connectionRequestBody.tenantId,
           clientId: connectionRequestBody.clientId,
-          clientSecretEncrypted: encryptedSecretStr, 
+          clientSecretEncrypted: encryptedSecretStr,
           subscriptionId: connectionRequestBody.subscriptionId,
           connectionStatus: ConnectionStatus.UNLINKED,
           lastSyncedAt: Date.now(),
         };
-
-      
 
         const updatedOrganization = await Organization.findByIdAndUpdate(
           organizationId,
           {
             $set: { "cloudConnections.azure": azureConnectionRequest },
           },
-          { runValidators: true, returnDocument: "after" }
+          { runValidators: true, returnDocument: "after" },
         );
-        
+
         return updatedOrganization;
       }
       case ECloudPlatforms.AWS: {
-        if (!connectionRequestBody.awsAccessKey || !connectionRequestBody.awsSecretKey || !connectionRequestBody.targetRegion) {
+        if (
+          !connectionRequestBody.awsAccessKey ||
+          !connectionRequestBody.awsSecretKey ||
+          !connectionRequestBody.targetRegion
+        ) {
           throw new Error("Missing mandatory AWS credential parameters.");
         }
 
-        const stsClient= new STSClient({
-          region: connectionRequestBody.targetRegion||"us-east-1",
+        const stsClient = new STSClient({
+          region: connectionRequestBody.targetRegion || "us-east-1",
           credentials: {
             accessKeyId: connectionRequestBody.awsAccessKey,
             secretAccessKey: connectionRequestBody.awsSecretKey,
@@ -334,10 +410,11 @@ async function testAndSaveCloudCredentials(connectionRequestBody: CloudConnectio
 
         const data = await stsClient.send(new GetCallerIdentityCommand({}));
 
-
         const awsConnectionRequest = {
           awsAccessKey: connectionRequestBody.awsAccessKey,
-          awsSecretKeyEncrypted: encryptSecret(connectionRequestBody.awsSecretKey),
+          awsSecretKeyEncrypted: encryptSecret(
+            connectionRequestBody.awsSecretKey,
+          ),
           targetRegion: connectionRequestBody.targetRegion,
           connectionStatus: ConnectionStatus.UNLINKED,
           lastSyncedAt: Date.now(),
@@ -348,14 +425,16 @@ async function testAndSaveCloudCredentials(connectionRequestBody: CloudConnectio
           {
             $set: { "cloudConnections.aws": awsConnectionRequest },
           },
-          { runValidators: true, returnDocument: "after" }
+          { runValidators: true, returnDocument: "after" },
         );
-        
+
         return updatedOrganization;
       }
       case ECloudPlatforms.GCP: {
-
-        if(!connectionRequestBody.clientProjectId || !connectionRequestBody.clientDatasetId) {
+        if (
+          !connectionRequestBody.clientProjectId ||
+          !connectionRequestBody.clientDatasetId
+        ) {
           throw new Error("Missing mandatory GCP credential parameters.");
         }
         const gcpConnectionRequest = {
@@ -365,7 +444,10 @@ async function testAndSaveCloudCredentials(connectionRequestBody: CloudConnectio
           lastSyncedAt: Date.now(),
         };
 
-        const dataset = bigquery.dataset(connectionRequestBody.clientDatasetId, { projectId: connectionRequestBody.clientProjectId });
+        const dataset = bigquery.dataset(
+          connectionRequestBody.clientDatasetId,
+          { projectId: connectionRequestBody.clientProjectId },
+        );
         const [metadata] = await dataset.getMetadata();
         if (!metadata) {
           throw new Error("GCP dataset not found or inaccessible.");
@@ -379,63 +461,89 @@ async function testAndSaveCloudCredentials(connectionRequestBody: CloudConnectio
           {
             $set: { "cloudConnections.gcp": gcpConnectionRequest },
           },
-          { runValidators: true, returnDocument: "after" }
+          { runValidators: true, returnDocument: "after" },
         );
-        
-        return updatedOrganization;
 
+        return updatedOrganization;
       }
-      
-      
-      default: 
+
+      default:
         return null;
     }
   } catch (error: any) {
-    
     throw new Error(error?.message || "Failed to save cloud credentials");
   }
 }
 
-async function connectCloudCredentials(platform: string, organization: IOrganization, status: string) {
-  try { 
+async function connectCloudCredentials(
+  platform: string,
+  organization: IOrganization,
+  status: string,
+) {
+  try {
     switch (platform) {
       case ECloudPlatforms.AZURE: {
-        const rawAzureConfig = JSON.parse(JSON.stringify(organization.cloudConnections?.azure));
-        const decryptedClientSecret = decryptSecret(rawAzureConfig.clientSecretEncrypted);
-        if (!decryptedClientSecret || !rawAzureConfig || !rawAzureConfig.clientSecretEncrypted) {
-          throw new Error("Cannot connect: Cloud configurations or clientSecretEncrypted are missing in database.");
+        const rawAzureConfig = JSON.parse(
+          JSON.stringify(organization.cloudConnections?.azure),
+        );
+        const decryptedClientSecret = decryptSecret(
+          rawAzureConfig.clientSecretEncrypted,
+        );
+        if (
+          !decryptedClientSecret ||
+          !rawAzureConfig ||
+          !rawAzureConfig.clientSecretEncrypted
+        ) {
+          throw new Error(
+            "Cannot connect: Cloud configurations or clientSecretEncrypted are missing in database.",
+          );
         }
 
         const client_credentials = new ClientSecretCredential(
           rawAzureConfig.tenantId!,
           rawAzureConfig.clientId!,
-          decryptedClientSecret, 
+          decryptedClientSecret,
         );
 
-        const token = await client_credentials.getToken("https://management.azure.com/.default");
+        const token = await client_credentials.getToken(
+          "https://management.azure.com/.default",
+        );
         if (!token || !token.token || token.token.isNullOrEmptyString()) {
-          throw new Error("Azure verification failed using decrypted secret token.");
+          throw new Error(
+            "Azure verification failed using decrypted secret token.",
+          );
         }
 
         const updatedOrganization = await Organization.findOneAndUpdate(
           { domain: organization.domain },
           { $set: { "cloudConnections.azure.connectionStatus": status } },
-          { runValidators: true, returnDocument: "after" }
+          { runValidators: true, returnDocument: "after" },
         );
 
         return updatedOrganization;
       }
       case ECloudPlatforms.AWS: {
-        const rawAwsConfig = JSON.parse(JSON.stringify(organization.cloudConnections?.aws));
+        const rawAwsConfig = JSON.parse(
+          JSON.stringify(organization.cloudConnections?.aws),
+        );
 
-        if (!rawAwsConfig || !rawAwsConfig.awsSecretKeyEncrypted || !rawAwsConfig.awsAccessKey || !rawAwsConfig.targetRegion) {
-          throw new Error("Cannot connect: Cloud configurations or required fields are missing in database.");
+        if (
+          !rawAwsConfig ||
+          !rawAwsConfig.awsSecretKeyEncrypted ||
+          !rawAwsConfig.awsAccessKey ||
+          !rawAwsConfig.targetRegion
+        ) {
+          throw new Error(
+            "Cannot connect: Cloud configurations or required fields are missing in database.",
+          );
         }
 
-        const decryptedAwsSecret = decryptSecret(rawAwsConfig.awsSecretKeyEncrypted);
+        const decryptedAwsSecret = decryptSecret(
+          rawAwsConfig.awsSecretKeyEncrypted,
+        );
 
-        const stsClient= new STSClient({
-          region: rawAwsConfig.targetRegion||"us-east-1",
+        const stsClient = new STSClient({
+          region: rawAwsConfig.targetRegion || "us-east-1",
           credentials: {
             accessKeyId: rawAwsConfig.awsAccessKey,
             secretAccessKey: decryptedAwsSecret,
@@ -447,22 +555,30 @@ async function connectCloudCredentials(platform: string, organization: IOrganiza
         const updatedOrganization = await Organization.findOneAndUpdate(
           { domain: organization.domain },
           { $set: { "cloudConnections.aws.connectionStatus": status } },
-          { runValidators: true, returnDocument: "after" }
+          { runValidators: true, returnDocument: "after" },
         );
-        
+
         return updatedOrganization;
       }
       case ECloudPlatforms.GCP: {
-        const rawGcpConfig = JSON.parse(JSON.stringify(organization.cloudConnections?.gcp));
+        const rawGcpConfig = JSON.parse(
+          JSON.stringify(organization.cloudConnections?.gcp),
+        );
 
-        if (!rawGcpConfig || !rawGcpConfig.clientProjectId || !rawGcpConfig.clientDatasetId) {
-          throw new Error("Cannot connect: Cloud configurations or required fields are missing in database.");
+        if (
+          !rawGcpConfig ||
+          !rawGcpConfig.clientProjectId ||
+          !rawGcpConfig.clientDatasetId
+        ) {
+          throw new Error(
+            "Cannot connect: Cloud configurations or required fields are missing in database.",
+          );
         }
 
         const updatedOrganization = await Organization.findOneAndUpdate(
           { domain: organization.domain },
           { $set: { "cloudConnections.gcp.connectionStatus": status } },
-          { runValidators: true, returnDocument: "after" }
+          { runValidators: true, returnDocument: "after" },
         );
 
         return updatedOrganization;
@@ -471,21 +587,20 @@ async function connectCloudCredentials(platform: string, organization: IOrganiza
         return null;
     }
   } catch (error: any) {
-    
     throw new Error(error?.message || "Failed to connect cloud credentials");
   }
 }
-        
+
 function refractureOrganizationResponse(org: any) {
-  const organization= {...org};
+  const organization = { ...org };
   const connections = organization.cloudConnections;
-  if(connections?.azure){
+  if (connections?.azure) {
     delete connections.azure.clientSecretEncrypted;
   }
-  if(connections?.aws){
+  if (connections?.aws) {
     delete connections.aws.awsSecretKeyEncrypted;
   }
-  if(connections?.gcp){
+  if (connections?.gcp) {
     delete connections.gcp.serviceAccountKeyEncrypted;
   }
   return organization;

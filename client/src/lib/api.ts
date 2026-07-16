@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getStoredToken } from "./auth";
 
+
 const spendTrendSchema = z.enum(["up", "down", "flat"]);
 
 const costCenterSchema = z.object({
@@ -35,7 +36,7 @@ export const dashboardPayloadSchema = z.object({
 
 export type DashboardPayload = z.infer<typeof dashboardPayloadSchema>;
 
-const baseURL="https://finops-nxob.onrender.com"
+const baseURL=import.meta.env.VITE_BASE_URL
 
 export async function getDashboard() {
   const response = await fetch(`${baseURL}/api/dashboard/get-dashboard`, {
