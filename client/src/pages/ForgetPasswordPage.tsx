@@ -27,11 +27,13 @@ export default function ForgetPasswordPage() {
     }
   });
 
-  function handleEmailSubmit(): void {
+  function handleEmailSubmit(e:any): void {
+    e.preventDefault();
     getTokenMutation.mutate(email);
   }
 
-  function handlePasswordReset(){
+  function handlePasswordReset(e:any){
+    e.preventDefault();
     mutation.mutate({email,token, password});
   }
 
