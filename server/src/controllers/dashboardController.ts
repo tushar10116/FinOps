@@ -433,6 +433,9 @@ async function analyseUsingGemini(systemInstruction: string, prompt: string) {
     config: {
       systemInstruction: systemInstruction,
       responseMimeType: "application/json",
+      temperature:0,
+      topP:1,
+      topK:1,
       responseSchema: {
         type: Type.OBJECT,
         required: ["recommendations"],
