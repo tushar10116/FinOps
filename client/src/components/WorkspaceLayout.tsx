@@ -82,7 +82,7 @@ export default function WorkspaceLayout() {
               Sign out
             </button>
           </div>}
-           {loadedUser && loadedUser.role === "user" && <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4">
+           {loadedUser && loadedUser.role === "viewer" && <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4">
             
             <button
               type="button"
