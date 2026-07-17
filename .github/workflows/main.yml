@@ -18,6 +18,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    environment:
+      name: github-pages
+
     defaults:
       run:
         working-directory: client
@@ -34,6 +37,8 @@ jobs:
       - run: npm ci
 
       - run: npm run build
+        env:
+          VITE_BASE_URL: ${{ vars.VITE_BASE_URL }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
