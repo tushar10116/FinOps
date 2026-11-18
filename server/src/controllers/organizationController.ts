@@ -18,6 +18,7 @@ import { BigQuery } from "@google-cloud/bigquery";
 import path from "path";
 import { fileURLToPath } from "url";
 import nodemailer from "nodemailer";
+import crypto from "crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,22 +49,34 @@ export const organizationController = {
           .json({ message: "Organization with this domain already exists" });
       }
 
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res
+          .status(400)
+          .json({ message: "User with this email already exists" });
+      }
+
       const newOrganization = new Organization({
         organizationName,
         domain,
       });
       await newOrganization.save();
 
-      const hashedPassword = await bcrypt.hash(password, 10);
+      try {
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-      const newUser = new User({
-        name,
-        email,
-        password: hashedPassword,
-        organizationId: newOrganization._id,
-        role: "admin",
-      });
-      await newUser.save();
+        const newUser = new User({
+          name,
+          email,
+          password: hashedPassword,
+          organizationId: newOrganization._id,
+          role: "admin",
+        });
+        await newUser.save();
+      } catch (error) {
+        await Organization.findByIdAndDelete(newOrganization._id);
+        throw error;
+      }
 
       return res
         .status(201)
@@ -113,7 +126,7 @@ export const organizationController = {
 
       if (isAlreadyRegistered)
         return res.status(400).json({ message: "User is already registered." });
-      const token = Math.random().toString(36).slice(2);
+      const token = crypto.randomBytes(16).toString("hex");
       const invitedUserToken = new InviteUser({
         name,
         email,
@@ -149,7 +162,11 @@ export const organizationController = {
   removeInvitedMember: async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
-      await InviteUser.findOneAndDelete({ email });
+      const organizationId = req.user?.organizationId;
+      const removed = await InviteUser.findOneAndDelete({ email, organizationId });
+      if (!removed) {
+        return res.status(404).json({ message: "Invited member not found" });
+      }
       return res.status(200).json({ message: "Member removed successfully" });
     } catch (error) {
       return res.status(500).json({ message: "Internal server error" });
@@ -188,7 +205,9 @@ export const organizationController = {
         .status(200)
         .json({
           message: "cloud registered successfully",
-          organization: updatedOrganization,
+          organization: refractureOrganizationResponse(
+            deleteInvalidCloudFromResponse(updatedOrganization.toObject()),
+          ),
         });
     } catch (error: any) {
       return res
@@ -217,7 +236,13 @@ export const organizationController = {
   deleteUser: async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
-      const user = await User.findOne({ email });
+      if (req.user?.email === email) {
+        return res.status(400).json({ message: "You cannot remove yourself" });
+      }
+      const user = await User.findOne({
+        email,
+        organizationId: req.user?.organizationId,
+      });
       if (!user) {
         return res.status(400).json({ message: "User not found" });
       }
@@ -247,7 +272,7 @@ export const organizationController = {
 
       const response = refractureOrganizationResponse(organizationResponse);
 
-      return res.status(200).json({ organization: organizationResponse });
+      return res.status(200).json({ organization: response });
     } catch (error) {
       return res.status(500).json({ message: "Internal server error" });
     }
@@ -483,21 +508,15 @@ async function connectCloudCredentials(
   try {
     switch (platform) {
       case ECloudPlatforms.AZURE: {
-        const rawAzureConfig = JSON.parse(
-          JSON.stringify(organization.cloudConnections?.azure),
-        );
-        const decryptedClientSecret = decryptSecret(
-          rawAzureConfig.clientSecretEncrypted,
-        );
-        if (
-          !decryptedClientSecret ||
-          !rawAzureConfig ||
-          !rawAzureConfig.clientSecretEncrypted
-        ) {
+        const rawAzureConfig: any = organization.cloudConnections?.azure;
+        if (!rawAzureConfig || !rawAzureConfig.clientSecretEncrypted) {
           throw new Error(
             "Cannot connect: Cloud configurations or clientSecretEncrypted are missing in database.",
           );
         }
+        const decryptedClientSecret = decryptSecret(
+          rawAzureConfig.clientSecretEncrypted,
+        );
 
         const client_credentials = new ClientSecretCredential(
           rawAzureConfig.tenantId!,
@@ -523,9 +542,7 @@ async function connectCloudCredentials(
         return updatedOrganization;
       }
       case ECloudPlatforms.AWS: {
-        const rawAwsConfig = JSON.parse(
-          JSON.stringify(organization.cloudConnections?.aws),
-        );
+        const rawAwsConfig: any = organization.cloudConnections?.aws;
 
         if (
           !rawAwsConfig ||
@@ -561,9 +578,7 @@ async function connectCloudCredentials(
         return updatedOrganization;
       }
       case ECloudPlatforms.GCP: {
-        const rawGcpConfig = JSON.parse(
-          JSON.stringify(organization.cloudConnections?.gcp),
-        );
+        const rawGcpConfig: any = organization.cloudConnections?.gcp;
 
         if (
           !rawGcpConfig ||

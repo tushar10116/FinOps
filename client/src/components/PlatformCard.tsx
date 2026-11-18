@@ -150,7 +150,7 @@ export function PlatformCard({
                 </p>{" "}
               </div>
             </div>
-            {data.actionType === "RESIZE" && (
+            {data.actionType === "RESIZE_VM" && (
               <div className="w-full">
                 <button
                   onClick={() => {

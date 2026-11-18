@@ -17,7 +17,7 @@ const inviteUserSchema = new mongoose.Schema({
     role:{
         type:String,
         required:true,
-        enum:["admin","billing_analyst","viewer","finance_lead"],
+        enum:["admin","viewer"],
         default:"viewer"
     },
     organizationId:{
