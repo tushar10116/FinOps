@@ -138,8 +138,14 @@ export const dashboardController = {
       );
       return res.status(202).json({ result });
     } catch (error: any) {
+      const status =
+        error instanceof HttpError
+          ? error.status
+          : error?.statusCode === 404
+            ? 404
+            : 500;
       return res
-        .status(500)
+        .status(status)
         .json({ message: error?.message || "Internal Server Error" });
     }
   },
@@ -484,6 +490,15 @@ async function analyseUsingGemini(systemInstruction: string, prompt: string) {
   return parsedContent.recommendations || [];
 }
 
+class HttpError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 async function optimizeCost(
   platform: string,
   actionType: string,
@@ -493,61 +508,85 @@ async function optimizeCost(
   recommendation: string,
   targetSize?: string,
 ) {
-  const normalizedPlatform = platform.toLowerCase();
-  switch (normalizedPlatform) {
+  if (actionType !== "RESIZE_VM")
+    throw new HttpError(400, `Unsupported action: ${actionType}`);
+  if (!resourceName || !targetSize)
+    throw new HttpError(400, "resourceName and targetSize are required.");
+
+  switch (platform?.toLowerCase()) {
     case "azure":
-      if (!details?.cloudConnections?.azure) return [];
-      return await azureOptimizeCost(
-        actionType,
+      if (!details?.cloudConnections?.azure)
+        throw new HttpError(400, "Azure is not connected.");
+      return await azureResizeVm(
         resourceName,
         resourceGroupName,
-        recommendation,
-        details.cloudConnections.azure as any,
+        targetSize,
+        details.cloudConnections.azure,
       );
     case "aws":
-      return await awsOptimizeCost(
-        actionType,
-        resourceName,
-        resourceGroupName,
-        recommendation,
-      );
     case "gcp":
-      return await gcpOptimizeCost(
-        actionType,
-        resourceName,
-        resourceGroupName,
-        recommendation,
+      throw new HttpError(
+        501,
+        `Automatic resize is not supported for ${platform.toUpperCase()} yet.`,
       );
-    // ✅ FIX: Added a default fallback to clear the "Not all code paths return a value" error
     default:
-      return [];
+      throw new HttpError(400, `Unknown platform: ${platform}`);
   }
 }
 
-async function azureOptimizeCost(
-  actionType: string,
-  resourceName: string,
-  resourceGroupName: string,
-  recommendation: string,
-  azure: any,
-) {
-  return [];
+function parseAzureVmTarget(resourceName: string, resourceGroupName: string) {
+  const match = resourceName.match(
+    /\/resourceGroups\/([^/]+)\/providers\/Microsoft\.Compute\/virtualMachines\/([^/]+)/i,
+  );
+  if (match) return { resourceGroup: match[1]!, vmName: match[2]! };
+  if (resourceName.includes("/"))
+    throw new HttpError(400, `${resourceName} is not an Azure virtual machine.`);
+  return { resourceGroup: resourceGroupName, vmName: resourceName };
 }
-async function awsOptimizeCost(
-  actionType: string,
+
+async function azureResizeVm(
   resourceName: string,
   resourceGroupName: string,
-  recommendation: string,
+  targetSize: string,
+  azure: IAzureCredentialBlock,
 ) {
-  return [];
-}
-async function gcpOptimizeCost(
-  actionType: string,
-  resourceName: string,
-  resourceGroupName: string,
-  recommendation: string,
-) {
-  return [];
+  const { resourceGroup, vmName } = parseAzureVmTarget(
+    resourceName,
+    resourceGroupName,
+  );
+  if (!resourceGroup)
+    throw new HttpError(400, "resourceGroupName is required.");
+
+  const credential = new ClientSecretCredential(
+    azure.tenantId,
+    azure.clientId,
+    decryptSecret(azure.clientSecretEncrypted),
+  );
+  const compute = new ComputeManagementClient(credential, azure.subscriptionId);
+
+  const vm = await compute.virtualMachines.get(resourceGroup, vmName);
+  const previousSize = vm.hardwareProfile?.vmSize;
+  if (previousSize?.toLowerCase() === targetSize.toLowerCase())
+    return { vmName, resourceGroup, previousSize, targetSize, status: "UNCHANGED" };
+
+  const availableSizes: string[] = [];
+  for await (const size of compute.virtualMachines.listAvailableSizes(
+    resourceGroup,
+    vmName,
+  )) {
+    if (size.name) availableSizes.push(size.name.toLowerCase());
+  }
+  if (!availableSizes.includes(targetSize.toLowerCase()))
+    throw new HttpError(
+      400,
+      `${targetSize} is not available for ${vmName} in its current region/cluster.`,
+    );
+
+  const poller = compute.virtualMachines.update(resourceGroup, vmName, {
+    hardwareProfile: { vmSize: targetSize },
+  });
+  await poller.submitted();
+  return { vmName, resourceGroup, previousSize, targetSize, status: "IN_PROGRESS" };
 }
 
 function chunkArray(array: any, chunkSize: number): any {

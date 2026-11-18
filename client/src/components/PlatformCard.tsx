@@ -55,6 +55,20 @@ export function PlatformCard({
     });
   }
 
+  function isResizeTarget(data: any) {
+    const vars = resizeMutation.variables;
+    return (
+      !!vars &&
+      vars.platform === data.platform &&
+      vars.resourceName === data.resourceName &&
+      vars.resourceGroupName === data.resourceGroupName
+    );
+  }
+
+  function isResizing(data: any) {
+    return resizeMutation.isPending && isResizeTarget(data);
+  }
+
   function handleShutDown(
     platform: any,
     resourceName: any,
@@ -153,6 +167,7 @@ export function PlatformCard({
             {data.actionType === "RESIZE_VM" && (
               <div className="w-full">
                 <button
+                  disabled={resizeMutation.isPending}
                   onClick={() => {
                     handleResize(
                       data.platform,
@@ -162,11 +177,23 @@ export function PlatformCard({
                       data.targetSize,
                     );
                   }}
-                  className="inline-flex h-10 w-25 items-center gap-2 rounded-lg border border-emerald-500 bg-emerald-600/80 px-3 py-1 text-xs font-medium uppercase tracking-[0.1em] hover:bg-emerald-800"
+                  className="inline-flex h-10 w-25 items-center gap-2 rounded-lg border border-emerald-500 bg-emerald-600/80 px-3 py-1 text-xs font-medium uppercase tracking-[0.1em] hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <CircleDollarSign className="h-4 w-4" />
-                  Resize to {data.targetSize}
+                  {isResizing(data) ? "Resizing..." : `Resize to ${data.targetSize}`}
                 </button>
+                {isResizeTarget(data) && resizeMutation.isError && (
+                  <p className="mt-2 text-xs text-red-400">
+                    {resizeMutation.error.message}
+                  </p>
+                )}
+                {isResizeTarget(data) && resizeMutation.isSuccess && (
+                  <p className="mt-2 text-xs text-emerald-400">
+                    {resizeMutation.data?.result?.status === "UNCHANGED"
+                      ? `Already ${data.targetSize}.`
+                      : `Resize to ${data.targetSize} started. The VM restarts during the resize.`}
+                  </p>
+                )}
               </div>
             )}
             {data.actionType === "SHUTDOWN_VM" && (

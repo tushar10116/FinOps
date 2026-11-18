@@ -7,8 +7,9 @@ export async function resizeResource(platform: string, actionType: string, resou
             headers:{'Content-Type':'application/json','Authorization':`Bearer ${getStoredToken()}`},
             body:JSON.stringify({platform,actionType,resourceName,resourceGroupName,recommendation,targetSize})
         })
-        if(!response.ok) throw new Error(`Request failed with status ${response.status}`)
-        return await response.json()
+        const data = await response.json().catch(()=>({}))
+        if(!response.ok) throw new Error(data?.message || `Request failed with status ${response.status}`)
+        return data
     }catch(error:any){
         throw new Error(error?.message||'Internal server error')
     }
