@@ -261,8 +261,7 @@ export async function removeInvitedMember(email:string):Promise<string>{
       }
       return "Member removed successfully";
   } catch (error) {
-      const message = "Internal server error";
-        throw new Error(message);
+      throw new Error(error instanceof Error ? error.message : "Internal server error");
   }
 }
 
@@ -284,8 +283,7 @@ export async function deleteRegisteredUser(email:string):Promise<string>{
       }
       return "Member removed successfully";
   } catch (error) {
-      const message = "Internal server error";
-        throw new Error(message);
+      throw new Error(error instanceof Error ? error.message : "Internal server error");
       }
 }
 
@@ -307,7 +305,6 @@ export async function generateInviteTokenForMember(email:string):Promise<Organiz
       }
       return await response.json() as OrganizationMember;
   } catch (error) {
-      const message = "Internal server error";
-        throw new Error(message);  
+      throw new Error(error instanceof Error ? error.message : "Internal server error");  
       }
     }

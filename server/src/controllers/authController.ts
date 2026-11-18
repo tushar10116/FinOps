@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import InviteUser from "../mongoose/models/InviteUser.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import crypto from "crypto";
 import { ResetToken } from "../mongoose/models/ResetToken.js";
 
 export const authController = {
@@ -83,7 +84,7 @@ export const authController = {
                 return res.status(400).json({message:"User not found"});
             }
             await ResetToken.deleteMany({email});
-            const token =Math.random().toString(36).slice(2);
+            const token = crypto.randomBytes(16).toString("hex");
             const resetToken = new ResetToken({email,token});
             await resetToken.save();
             const transporter = nodemailer.createTransport({
@@ -101,8 +102,8 @@ export const authController = {
               }
             await transporter.sendMail(mailOptions);
             return res.status(200).json({message:"Email sent successfully"});
-        } catch (error) {
-            return res.status(500).json({message:error?error.message:"Internal server error"});
+        } catch (error:any) {
+            return res.status(500).json({message:error?.message || "Internal server error"});
         }
     },
 
@@ -120,6 +121,7 @@ export const authController = {
             const hashedPassword = await bcrypt.hash(password, 10);
             user.password = hashedPassword;
             await user.save();
+            await ResetToken.deleteMany({email});
             return res.status(200).json({message:"Password reset successful"});
         } catch (error) {
             return res.status(500).json({message:"Internal server error"});

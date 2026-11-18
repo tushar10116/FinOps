@@ -19,7 +19,6 @@ export default function RegisterOrganization() {
 
   const isFormValid = registerOrganizationSchema.safeParse({name, email, password, confirmPassword, organizationName, domain}).success;
 
- console.log("Form validation result:", registerOrganizationSchema.safeParse({name, email, password, confirmPassword, organizationName, domain})); 
   const mutation = useMutation({
     mutationFn: registerOrganization,
     onSuccess: (session) => {

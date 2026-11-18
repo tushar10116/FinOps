@@ -8,7 +8,7 @@ const navigationItems = [
     to: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
-    allowedRoles:["admin","user"]
+    allowedRoles:["admin","viewer"]
   },
   {
     to: "/organization-users",

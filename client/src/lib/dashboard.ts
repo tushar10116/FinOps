@@ -2,7 +2,7 @@ import { getStoredToken } from "./auth"
 
 export async function resizeResource(platform: string, actionType: string, resourceName: string, resourceGroupName: string, recommendation: string, targetSize: string | undefined){
     try{
-        const response = await fetch('/api/dashboard/resize-resource',{
+        const response = await fetch(`${import.meta.env.VITE_BASE_URL}/api/dashboard/resize-resource`,{
             method:'POST',
             headers:{'Content-Type':'application/json','Authorization':`Bearer ${getStoredToken()}`},
             body:JSON.stringify({platform,actionType,resourceName,resourceGroupName,recommendation,targetSize})

@@ -34,6 +34,7 @@ export default function ForgetPasswordPage() {
 
   function handlePasswordReset(e:any){
     e.preventDefault();
+    if (password !== confirmPassword) return;
     mutation.mutate({email,token, password});
   }
 
@@ -88,11 +89,14 @@ export default function ForgetPasswordPage() {
                 value={email || ""}
                 placeholder="you@company.com"
               />
+              {getTokenMutation.isError && (
+                <div className="text-red-500">{getTokenMutation.error.message}</div>
+              )}
 
               <button
                 type="submit"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={mutation.isPending}
+                disabled={getTokenMutation.isPending}
               >
                 Get Reset Token
               </button>
@@ -141,12 +145,12 @@ export default function ForgetPasswordPage() {
               <button
                 type="submit"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={mutation.isPending}
+                disabled={mutation.isPending || password === "" || password !== confirmPassword}
               >
                 Reset Password
               </button>
-              <button className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-60" onClick={() => prevStep()}>Previous Step</button>
-              <button className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-60" onClick={() => navigate("/login", { replace: true })}>Cancel</button>
+              <button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-60" onClick={() => prevStep()}>Previous Step</button>
+              <button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-60" onClick={() => navigate("/login", { replace: true })}>Cancel</button>
             </form>}
           </div>
         </section>

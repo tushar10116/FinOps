@@ -7,7 +7,6 @@
     "moduleResolution": "NodeNext",
     "noEmit": false,
     "types": ["node"],
-    "ignoreDeprecations": "6.0",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "skipDefaultLibCheck": true

@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { clearStoredToken, fetchCurrentUser, getStoredToken } from "../lib/auth";
 import { useUser } from "../hooks/useUser";
 
@@ -8,15 +8,17 @@ export default function ProtectedRoute({authorisedRoles}: {authorisedRoles?: str
   const navigate = useNavigate();
 
   const { data:loadedUser, isLoading, isError } = useUser();
+  const isUnauthorised = !!loadedUser && !!authorisedRoles && !authorisedRoles.includes(loadedUser.role);
 
-
-
-  if(loadedUser && authorisedRoles && !authorisedRoles?.includes(loadedUser.role!)) {
-    
-    setTimeout(() => {
+  useEffect(() => {
+    if (!isUnauthorised) return;
+    const timer = setTimeout(() => {
       navigate("/", { replace: true });
     }, 5000);
+    return () => clearTimeout(timer);
+  }, [isUnauthorised, navigate]);
 
+  if (isUnauthorised) {
     return <UnAuthorised />;
   }
 

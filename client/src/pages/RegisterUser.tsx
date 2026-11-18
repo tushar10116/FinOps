@@ -18,9 +18,11 @@ export default function RegisterPage() {
 
   const mutation = useMutation({
     mutationFn: registerUser,
-   
-   
+    onSuccess: () => {
+      navigate("/login", { replace: true });
+    }
   });
+  const passwordsMismatch = confirmPassword !== "" && password !== confirmPassword;
 
   if (token) {
     return <Navigate to="/dashboard" replace />;
@@ -28,6 +30,7 @@ export default function RegisterPage() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (password !== confirmPassword) return;
     mutation.mutate({ name, email, password,inviteToken });
   }
 
@@ -49,6 +52,9 @@ export default function RegisterPage() {
             <TextField label="Confirm Password" type="password" value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter your password" />
              
               <TextField  label="Token"  type="password" value={inviteToken} onChange={setToken} placeholder="invitation token" />
+              {passwordsMismatch ? (
+                <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">Passwords do not match</p>
+              ) : null}
                {mutation.isError ? (
                 <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
                   {mutation.error instanceof Error ? mutation.error.message : "Registration failed"}
@@ -57,7 +63,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={mutation.isPending}
+                disabled={mutation.isPending || passwordsMismatch}
               >
                 {mutation.isPending ? "Creating account..." : "Create account"}
                 <ArrowRight className="h-4 w-4" />

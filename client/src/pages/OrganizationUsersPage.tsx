@@ -109,7 +109,17 @@ export default function OrganizationUsersPage() {
         setMessage("");
         setMessageTone("");
       }, 3000);
-    }
+    },
+    onError: (error) => {
+      setMessageTone("error");
+      setMessage(
+        error instanceof Error ? error.message : "Error removing member",
+      );
+      window.setTimeout(() => {
+        setMessage("");
+        setMessageTone("");
+      }, 3000);
+    },
   })
 
  
@@ -139,23 +149,11 @@ export default function OrganizationUsersPage() {
   const handleRemoveMember = (email: string) => {
     // Logic to remove a member from the organization
     removeMutation.mutate(email);
-    setMessage("Member removed successfully");
-    setMessageTone("success");
-    window.setTimeout(() => {
-      setMessage("");
-      setMessageTone("");
-    }, 2500);
   };
 
   const handleRemoveRegisteredUser = (email: string) => {
     // Logic to remove a member from the organization
     removeRegisteredUser.mutate(email);
-    setMessage("Member removed successfully");
-    setMessageTone("success");
-    window.setTimeout(() => {
-      setMessage("");
-      setMessageTone("");
-    }, 2500);
   };
 
   function selectAndCopy(e: MouseEvent<HTMLButtonElement>) {

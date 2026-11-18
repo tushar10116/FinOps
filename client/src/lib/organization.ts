@@ -27,7 +27,7 @@ export async function registerCloud(
 
     return await response.json();
   } catch (error:any) {
-    throw new Error("unable to register");
+    throw new Error(error?.message || "unable to register");
   }
 }
 
@@ -44,6 +44,8 @@ export async function getOrganization()
                 }
             }
         )
+
+        if (!response.ok) return {}
 
         return await response.json().then(response=>response.organization)
     } catch (error) {
