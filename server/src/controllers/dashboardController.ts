@@ -534,14 +534,24 @@ async function optimizeCost(
   }
 }
 
-function parseAzureVmTarget(resourceName: string, resourceGroupName: string) {
+function parseAzureVmTarget(
+  resourceName: string,
+  resourceGroupName: string,
+  subscriptionId: string,
+) {
+  if (!resourceName.includes("/"))
+    return { resourceGroup: resourceGroupName, vmName: resourceName };
   const match = resourceName.match(
-    /\/resourceGroups\/([^/]+)\/providers\/Microsoft\.Compute\/virtualMachines\/([^/]+)/i,
+    /^\/subscriptions\/([^/]+)\/resourceGroups\/([^/]+)\/providers\/Microsoft\.Compute\/virtualMachines\/([^/]+)\/?$/i,
   );
-  if (match) return { resourceGroup: match[1]!, vmName: match[2]! };
-  if (resourceName.includes("/"))
+  if (!match)
     throw new HttpError(400, `${resourceName} is not an Azure virtual machine.`);
-  return { resourceGroup: resourceGroupName, vmName: resourceName };
+  if (match[1]!.toLowerCase() !== subscriptionId.toLowerCase())
+    throw new HttpError(
+      400,
+      `${resourceName} is not in the connected Azure subscription.`,
+    );
+  return { resourceGroup: match[2]!, vmName: match[3]! };
 }
 
 async function azureResizeVm(
@@ -553,6 +563,7 @@ async function azureResizeVm(
   const { resourceGroup, vmName } = parseAzureVmTarget(
     resourceName,
     resourceGroupName,
+    azure.subscriptionId,
   );
   if (!resourceGroup)
     throw new HttpError(400, "resourceGroupName is required.");
